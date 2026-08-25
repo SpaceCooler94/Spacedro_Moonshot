@@ -18,18 +18,19 @@ Usage:
     python3 moonshot_scrape.py [YYYY-MM-DD]
         (defaults to today; date maps to the site's ?date= param)
 
-Output (written next to this script):
-    moonshot_<date>.json  — full parsed payload (date/games/predictions/summary)
-    moonshot_<date>.csv   — one row per batter, ranked by pHr desc
+Output (written to ./Data/, created if missing):
+    Data/moonshot_<date>.json  — full parsed payload (date/games/predictions/summary)
+    Data/moonshot_<date>.csv   — one row per batter, ranked by pHr desc
 
 No API key / auth needed — this is a plain GET, same as a browser.
 Rerun daily (or wire into a cron/GitHub Actions job like the rest of
 the pipeline scripts) since the board changes with lineups/odds/day.
 """
-import sys, re, json, csv, urllib.request
+import os, sys, re, json, csv, urllib.request
 from datetime import date as _date
 
 BASE = "https://my-new-sport-mlb.grok.me/"
+OUTPUT_DIR = "Data"
 
 
 def fetch_html(date_str: str) -> str:
@@ -277,8 +278,9 @@ def main():
     board = find_board(root)
 
     out_date = board.get("date", date_str)
-    json_path = f"moonshot_{out_date}.json"
-    csv_path = f"moonshot_{out_date}.csv"
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    json_path = os.path.join(OUTPUT_DIR, f"moonshot_{out_date}.json")
+    csv_path = os.path.join(OUTPUT_DIR, f"moonshot_{out_date}.csv")
 
     with open(json_path, "w") as f:
         json.dump(board, f, indent=2)
