@@ -1,0 +1,32 @@
+name: Scrape Moonshot Board
+
+on:
+  schedule:
+    # 15:00 UTC = 11:00 AM ET / 10:00 AM CT during EDT (summer); shifts to
+    # 10:00 AM ET / 9:00 AM CT once clocks fall back in Nov — cron doesn't
+    # know about DST, adjust the hour then if it matters for lineup timing.
+    - cron: '0 15 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run scraper
+        run: python moonshot_scrape.py
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Data/
+          git diff --staged --quiet || git commit -m "Moonshot board $(date -u +%F)"
+          git push
