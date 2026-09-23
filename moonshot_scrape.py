@@ -26,18 +26,27 @@ No API key / auth needed — this is a plain GET, same as a browser.
 Rerun daily (or wire into a cron/GitHub Actions job like the rest of
 the pipeline scripts) since the board changes with lineups/odds/day.
 """
-import os, sys, re, json, csv, urllib.request
+import os, sys, re, json, csv, time, urllib.request, urllib.error
 from datetime import date as _date
 
 BASE = "https://my-new-sport-mlb.grok.me/"
 OUTPUT_DIR = "Data"
 
 
-def fetch_html(date_str: str) -> str:
+def fetch_html(date_str: str, retries: int = 3, timeout: int = 45) -> str:
     url = f"{BASE}?date={date_str}" if date_str else BASE
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return resp.read().decode("utf-8", errors="replace")
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read().decode("utf-8", errors="replace")
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            last_err = e
+            print(f"fetch attempt {attempt}/{retries} failed: {e}", file=sys.stderr)
+            if attempt < retries:
+                time.sleep(5 * attempt)
+    raise RuntimeError(f"failed to fetch {url} after {retries} attempts: {last_err}")
 
 
 def extract_stream_script(html: str) -> str:
